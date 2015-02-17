@@ -26,6 +26,16 @@ VM* newVM(void) {
     return vm;
 }
 
+void push(VM *vm, Object *obj) {
+    assert(vm->size < STACK_MAX, "Uh oh, stack overflow!\n");
+    vm->stack[vm->size++] = obj;
+}
+
+Object* pop(VM *vm) {
+    assert(vm->size > 0, "Nothing on the stack\n");
+    return vm->stack[(vm->size)--];
+}
+
 int main(void) {
 
     return 0;
