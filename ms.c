@@ -7,14 +7,20 @@ typedef enum {
     //OBJ_PAIR
 } ObjectType;
 
+// let's make this a node for a linked list!
 typedef struct sObject {
+    
+    struct sObject *next;
+
     unsigned char mark_bit;
     ObjectType type;
     int value;
+
 } Object;
 
 // whoo let's define a tiny stack-based VM
 #define STACK_MAX 256
+#define INITIAL_GC_THRESHOLD 50
 
 static void die(const char *message) {
     perror(message);
@@ -22,13 +28,20 @@ static void die(const char *message) {
 }
 
 typedef struct {
+    Object *head;
     Object* stack[STACK_MAX];
     int size;
+
+    int currentObjects;
+    int maxObjects;
+
 } VM;
 
 VM* newVM(void) {
     VM* vm = malloc(sizeof(VM));
     vm->size = 0;
+    vm->head = NULL;
+    vm->maxObjects = INITIAL_GC_THRESHOLD;
     return vm;
 }
 
@@ -49,10 +62,20 @@ Object* pop(VM *vm) {
 Object* newObject(VM *vm, ObjectType type) {
     Object *object = malloc(sizeof(Object));
     object->type = type;
+    object->mark_bit = 0;
+
+    object->next = vm->head;
+    vm->head = object;
+    vm->currentObjects++;
+
     return object;
 }
 
 static void mark(Object *object) {
+    if (object->mark_bit) {
+        return;
+    }
+
     object->mark_bit = 1;
 }
 
@@ -68,6 +91,35 @@ void pushInt(VM *vm, int value) {
     object->value = value;
     mark(object);
     push(vm, object);
+}
+
+// traverse through Objects in VM
+void sweep(VM *vm) {
+    Object **obj = &vm->head;
+    while(*obj) {
+
+        // if not marked, need to free object
+        if (! (*obj)->mark_bit) {
+
+            Object *unref = *obj;
+            *obj = unref->next;
+
+            free(unref);
+        } else {
+            // reset markbit to 0
+            (*obj)->mark_bit = 0;
+            *obj = (*obj)->next;
+        }
+    }
+}
+
+void gc(VM* vm) {
+
+
+    markAll(vm);
+    sweep(vm);
+
+
 }
 
 int main(void) {
