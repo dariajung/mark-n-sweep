@@ -56,42 +56,25 @@ Object* pop(VM *vm) {
     if (vm->size < 0) {
         die("Nothing on the stack\n");
     }
-    return vm->stack[(vm->size)--];
-}
-
-Object* newObject(VM *vm, ObjectType type) {
-    Object *object = malloc(sizeof(Object));
-    object->type = type;
-    object->mark_bit = 0;
-
-    object->next = vm->head;
-    vm->head = object;
-    vm->currentNum++;
-
-    return object;
+    return vm->stack[--vm->size];
 }
 
 static void mark(Object *object) {
+
     if (object->mark_bit) {
         return;
     }
-
     object->mark_bit = 1;
 }
 
 static void markAll(VM *vm) {
     int i;
+
+    printf("vm size %d\n", vm->size);
+
     for (i = 0; i < vm->size; i++) {
         mark(vm->stack[i]);
     }
-}
-
-void pushInt(VM *vm, int value) {
-    Object *object = newObject(vm, OBJ_INT);
-    object->value = value;
-    mark(object);
-
-    push(vm, object);
 }
 
 // traverse through Objects in VM
@@ -106,14 +89,16 @@ void sweep(VM *vm) {
             *obj = unref->next;
 
             free(unref);
+            vm->currentNum--;
+
+        // if marked as 1, keep
         } else {
             // reset markbit to 0
             (*obj)->mark_bit = 0;
-            *obj = (*obj)->next;
+            obj = &(*obj)->next;
         }
     }
 }
-
 
 void gc(VM* vm) {
 
@@ -122,8 +107,32 @@ void gc(VM* vm) {
     markAll(vm);
     sweep(vm);
 
-    printf("Collected %d objects, %d remaining.\n", numObjects - vm->currentNum,
-         vm->currentNum);
+    printf("Objects originally on stack: %d, Collected: %d, Remaining: %d\n"
+        , numObjects, numObjects - vm->currentNum, vm->currentNum);
+}
+
+Object* newObject(VM *vm, ObjectType type) {
+    if (vm->currentNum == vm->maxObjects) {
+        gc(vm);
+    }
+
+    Object *object = malloc(sizeof(Object));
+    object->type = type;
+    object->mark_bit = 0;
+
+    object->next = vm->head;
+    vm->head = object;
+    vm->currentNum++;
+
+    return object;
+}
+
+void pushInt(VM *vm, int value) {
+    Object *object = newObject(vm, OBJ_INT);
+    object->value = value;
+    mark(object);
+
+    push(vm, object);
 }
 
 void freeVM(VM *vm) {
@@ -135,6 +144,7 @@ void freeVM(VM *vm) {
 void test1() {
     printf("Test 1: Objects on stack are not removed.\n");
     VM *vm = newVM();
+
     pushInt(vm, 1);
     pushInt(vm, 2);
 
@@ -145,11 +155,39 @@ void test1() {
     } else {
         printf("What\n");
     }
+
+    freeVM(vm);
 }
+
+void test2() {
+    printf("Test 2: Add >= max number of objects.\n");
+
+    VM *vm = newVM();
+    int i;
+
+    pushInt(vm, 1);
+    pushInt(vm, 2);
+
+    pop(vm);
+    pop(vm);
+
+    gc(vm);
+
+    if (vm->currentNum == 0) {
+        printf("All items collected\n");
+    } else {
+        printf("Not all items were collected from garbage\n");
+    }
+
+    freeVM(vm);
+}
+
+
 
 int main(void) {
 
-    test1();
+    //test1();
+    test2();
 
     return 0;
 
