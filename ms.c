@@ -20,7 +20,7 @@ typedef struct sObject {
 
 // whoo let's define a tiny stack-based VM
 #define STACK_MAX 256
-#define INITIAL_GC_THRESHOLD 50
+#define INITIAL_GC_THRESHOLD 8
 
 static void die(const char *message) {
     perror(message);
@@ -32,7 +32,7 @@ typedef struct {
     Object* stack[STACK_MAX];
     int size;
 
-    int currentObjects;
+    int currentNum;
     int maxObjects;
 
 } VM;
@@ -46,14 +46,14 @@ VM* newVM(void) {
 }
 
 void push(VM *vm, Object *obj) {
-    if (vm->size < STACK_MAX) {
+    if (vm->size > STACK_MAX) {
         die("Uh oh, stack overflow!\n");
     }
     vm->stack[vm->size++] = obj;
 }
 
 Object* pop(VM *vm) {
-    if (vm->size > 0) {
+    if (vm->size < 0) {
         die("Nothing on the stack\n");
     }
     return vm->stack[(vm->size)--];
@@ -66,7 +66,7 @@ Object* newObject(VM *vm, ObjectType type) {
 
     object->next = vm->head;
     vm->head = object;
-    vm->currentObjects++;
+    vm->currentNum++;
 
     return object;
 }
@@ -90,6 +90,7 @@ void pushInt(VM *vm, int value) {
     Object *object = newObject(vm, OBJ_INT);
     object->value = value;
     mark(object);
+
     push(vm, object);
 }
 
@@ -113,16 +114,42 @@ void sweep(VM *vm) {
     }
 }
 
+
 void gc(VM* vm) {
 
+    int numObjects = vm->currentNum;
 
     markAll(vm);
     sweep(vm);
 
+    printf("Collected %d objects, %d remaining.\n", numObjects - vm->currentNum,
+         vm->currentNum);
+}
 
+void freeVM(VM *vm) {
+    vm->size = 0;
+    gc(vm);
+    free(vm);
+}
+
+void test1() {
+    printf("Test 1: Objects on stack are not removed.\n");
+    VM *vm = newVM();
+    pushInt(vm, 1);
+    pushInt(vm, 2);
+
+    gc(vm);
+
+    if (vm->currentNum == 2) {
+        printf("Items preserved\n");
+    } else {
+        printf("What\n");
+    }
 }
 
 int main(void) {
+
+    test1();
 
     return 0;
 
