@@ -3,10 +3,11 @@
 #define HEAP_SIZE   100
 
 // inefficient char array first to represent bit array
+// Global structure
 struct bitarray {
     unsigned char bitarr[HEAP_SIZE];
     int curr_free_index;
-};
+} BITARRAY;
 
 // a cons_object is 24 BYTES 
 // (for now, try to figure out how to get it to be power of 2)
@@ -53,18 +54,19 @@ FREE_LIST* init_heap() {
     return fptr;
 }
 
-struct bitarray * init_bitarray() {
-    struct bitarray ba;
-    struct bitarray *ptr = &ba;
-    ptr->curr_free_index = 0;
-
+void init_bitarray() {
+    BITARRAY.curr_free_index = 0;
     int i;
     for (i = 0; i < HEAP_SIZE; i++) {
-        ptr->bitarr[i] = 0;
+        BITARRAY.bitarr[i] = 0;
     }
-
-    return ptr;
 }
+
+void update_bitarray() {
+    BITARRAY.bitarr[BITARRAY.curr_free_index] = 1;
+    BITARRAY.curr_free_index++;
+}
+
 
 // we will use sequential/first fit allocation for now since it is the simplest
 // void allocate() {
@@ -76,6 +78,9 @@ int main() {
     printf("size of cons_object %d\n", (int)sizeof(HEAP_OBJECT));
 
     printf("size of HEAP %d\n", (int)sizeof(FREE_LIST));
+
+    //init bitarray
+    init_bitarray();
 
     FREE_LIST *fptr = init_heap();
     HEAP_OBJECT new_object;
