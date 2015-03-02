@@ -39,22 +39,22 @@ typedef struct heap_object {
 
 
 // total size of heap is 100 cons_object objects
-// do I need to keep track of roots?
-typedef struct free_storage {
-    HEAP_OBJECT *free_list[HEAP_SIZE];
-    HEAP_OBJECT *next_free;
+// make this global
+struct free_storage {
+    HEAP_OBJECT free_list[HEAP_SIZE];
     int next_free_index;
 
 } FREE_LIST;
 
-FREE_LIST* init_heap() {
-    FREE_LIST fl;
-    FREE_LIST *fptr = &fl;
+void init_heap() {
 
-    fptr->next_free = fptr->free_list[0];
-    fptr->next_free_index = 0; 
+    FREE_LIST.next_free_index = 0; 
+}
 
-    return fptr;
+void update_heap(HEAP_OBJECT new_object) {
+    int index = FREE_LIST.next_free_index;
+    FREE_LIST.free_list[index] = new_object;
+    FREE_LIST.next_free_index++;
 }
 
 void init_bitarray() {
@@ -84,16 +84,17 @@ int main() {
     //init bitarray
     init_bitarray();
 
-    FREE_LIST *fptr = init_heap();
+    init_heap();
     HEAP_OBJECT new_object;
     new_object.type = 0;
     new_object.marked = 0;
-    new_object.address = BITARRAY.curr_free_index;
+    new_object.address = 0;
     new_object.root = 1;
-    new_object.value = 17;
+    new_object.value = 10;
 
-    fptr->next_free = &new_object;
-    fptr->next_free += sizeof(HEAP_OBJECT);
+    update_heap(new_object);
+    printf("%d\n", FREE_LIST.next_free_index);
+
 
     return 0;
 }
