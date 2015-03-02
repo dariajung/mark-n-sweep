@@ -9,22 +9,23 @@ struct bitarray {
     int curr_free_index;
 } BITARRAY;
 
-// a cons_object is 24 BYTES 
-// (for now, try to figure out how to get it to be power of 2)
+// a cons_object is 16 BYTES 
 typedef struct heap_object {
-
-    struct heap_object *next;
     // type - 0 for integer
     // type - 1 for cons
-    unsigned int type;
+    unsigned char type;
 
     // marked - 0 if not marked
     // marked - 1 if marked
-    unsigned int marked;
+    unsigned char marked;
 
     // 0 if not a root object
     // 1 if a root object
-    unsigned int root;
+    unsigned char root;
+
+    // "address" in FREE_LIST, 
+    // or index in the free_list array
+    int address;
 
     union {
         int value;
@@ -42,6 +43,7 @@ typedef struct heap_object {
 typedef struct free_storage {
     HEAP_OBJECT *free_list[HEAP_SIZE];
     HEAP_OBJECT *next_free;
+    int next_free_index;
 
 } FREE_LIST;
 
@@ -50,12 +52,12 @@ FREE_LIST* init_heap() {
     FREE_LIST *fptr = &fl;
 
     fptr->next_free = fptr->free_list[0];
+    fptr->next_free_index = 0; 
 
     return fptr;
 }
 
 void init_bitarray() {
-    BITARRAY.curr_free_index = 0;
     int i;
     for (i = 0; i < HEAP_SIZE; i++) {
         BITARRAY.bitarr[i] = 0;
@@ -86,6 +88,7 @@ int main() {
     HEAP_OBJECT new_object;
     new_object.type = 0;
     new_object.marked = 0;
+    new_object.address = BITARRAY.curr_free_index;
     new_object.root = 1;
     new_object.value = 17;
 
