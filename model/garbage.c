@@ -3,6 +3,9 @@
 
 #define HEAP_SIZE   100
 
+void update_m_free();
+void garbage_collect();
+
 // inefficient char array first to represent bit array
 struct bitarray {
     unsigned char m_map[HEAP_SIZE];
@@ -29,7 +32,7 @@ typedef struct heap_object {
 
     // "address" in FREE_LIST, 
     // or index in the free_list array
-    int address;
+    unsigned char * address;
 
     union {
         int value;
@@ -41,6 +44,11 @@ typedef struct heap_object {
     };
 } HEAP_OBJECT;
 
+// not sure how to format this
+// as an array?
+struct root_set {
+    unsigned char * roots[HEAP_SIZE];
+} ROOT_SET;
 
 // total size of heap is 100 cons_object objects
 // free list is a list of free chunks of memory
@@ -78,9 +86,14 @@ void init_bitarray() {
     }
 }
 
-void update_bitarray(int index) {
+void mark_bitarray(int index) {
     // mark as not free
     BITARRAY.m_map[index] = 1;
+}
+
+void unmark_bitarray(int index) {
+    // mark as free
+    BITARRAY.m_map[index] = 0;
 }
 
 void print_bitarray() {
@@ -97,7 +110,7 @@ void update_m_free() {
     if (FREE_LIST.num_objects >= HEAP_SIZE) {
         // call garbage collect
         printf("Stopping to collect garbage\n");
-        //garbage_collect();
+        garbage_collect();
     }
 
     // if for some reason even after garbage collection
@@ -133,14 +146,19 @@ HEAP_OBJECT * halloc() {
     // set object as not marked
     ptr->marked = 0;
     // give object an address in the memory pool
-    ptr->address = FREE_LIST.m_free;
+    ptr->address = FREE_LIST.memory_pool + FREE_LIST.m_free;
     FREE_LIST.num_objects++;
 
-    update_bitarray((FREE_LIST.m_free) / sizeof(HEAP_OBJECT));
+    mark_bitarray((FREE_LIST.m_free) / sizeof(HEAP_OBJECT));
     // get the next halloc ready to allocate chunk by finding the
     // next available spot of memory
     update_m_free();
     return ptr;
+}
+
+void hfree(int i) {
+    unmark_bitarray(i);
+    FREE_LIST.num_objects--;
 }
 
 // creates, doesn't set value
@@ -196,18 +214,57 @@ void print_object(HEAP_OBJECT *obj) {
     }
 }
 
-// void garbage_collect() {
-//     mark(); // pass root set?
-//     sweep();
-// }
+void mark(HEAP_OBJECT *obj) {
+    if (obj->marked) return;
 
-// void mark() {
+    obj->marked = 1;
 
-// }
+    // type 1 means cons cell
+    if (obj->type == 1) {
+        mark(obj->car);
+        mark(obj->cdr);
+    }
+}
 
-// void sweep() {
-    
-// }
+void mark_all() {
+    // annoying, O(N)
+    int i;
+    for (i = 0; i < HEAP_SIZE; i++) {
+        if (ROOT_SET[i]) {
+            mark(ROOT_SET[i]);
+        }
+    }
+}
+
+void sweep() {
+    printf("sweepy sweep\n");
+    int i;
+    for (i = 0; i < HEAP_SIZE; i++) {
+        // access object at ith chunk of memory in
+        // memory pool
+        HEAP_OBJECT *ptr = (HEAP_OBJECT *)(FREE_LIST.memory_pool + sizeof(HEAP_OBJECT)*i);
+        // this was something that was unreachable
+        if (ptr->marked == 0) {
+            // need to "free"
+            printf("unreachable\n");
+            hfree(i);
+        } else {
+            printf("reachable");
+            ptr->marked = 0;
+        }
+    }
+
+    update_m_free();
+}
+
+void add_to_root_set() {
+
+}
+
+void garbage_collect() {
+    mark_all(); // pass root set?
+    sweep();
+}
 
 int main() {
 
@@ -219,8 +276,13 @@ int main() {
     HEAP_OBJECT *null_obj = create_NULL();
     HEAP_OBJECT *nptr = create_cons(new_object, null_obj);
 
-    print_object(nptr);
+    printf("new_object addr %p\n", new_object->address);
+    printf("nptr addr %p\n", nptr->address);
 
+    print_object(nptr);
+    print_bitarray();
+
+    garbage_collect();
     print_bitarray();
 
     free(FREE_LIST.memory_pool);
