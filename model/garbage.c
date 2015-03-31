@@ -4,16 +4,15 @@
 #define HEAP_SIZE   100
 
 // inefficient char array first to represent bit array
-// Global structure
 struct bitarray {
     unsigned char m_map[HEAP_SIZE];
-    int b_free;
 } BITARRAY;
 
 // a heap object / CHUNK in memory pool
 typedef struct heap_object {
+
     // type - 0 for integer
-    // type - 1 for cons
+    // type - 1 for cons 
     unsigned char type;
 
     // null - 0 for non-null
@@ -25,9 +24,8 @@ typedef struct heap_object {
     unsigned char marked;
 
     // next object in the linked list of
-    // allocated objects?
-    // do i need this?
-    // struct heap_object *next;
+    // allocated objects
+    struct heap_object *next;
 
     // "address" in FREE_LIST, 
     // or index in the free_list array
@@ -51,14 +49,25 @@ typedef struct heap_object {
 // we are using sequential allocation
 struct free_list {
     unsigned char *memory_pool; // pointer to entire memory pool
-    int m_free; // int or pointer
+    int m_free; // int or pointer in the memory pool
+
+    /* head of linked list of allocated objects */
+    HEAP_OBJECT *head;
+
+    /* number of objects allocated on the heap */
+    int num_objects;
+
 } FREE_LIST;
 
 void init_heap() {
     // let's pre-allocate a memory pool
     FREE_LIST.memory_pool = malloc(sizeof(struct heap_object) * HEAP_SIZE);
+
     // the first available spot in the memory pool
     FREE_LIST.m_free = 0; 
+
+    FREE_LIST.head = NULL;
+    FREE_LIST.num_objects = 0;
 }
 
 // unclear if this is necessary
@@ -69,10 +78,9 @@ void init_bitarray() {
     }
 }
 
-void update_bitarray() {
+void update_bitarray(int index) {
     // mark as not free
-    BITARRAY.m_map[BITARRAY.b_free] = 1;
-    BITARRAY.b_free++;
+    BITARRAY.m_map[index] = 1;
 }
 
 void print_bitarray() {
@@ -84,73 +92,60 @@ void print_bitarray() {
     printf("\r\n");
 }
 
-// need a way to cycle through heap if next slot isn't free
-void update_heap(HEAP_OBJECT *new_object) {
+void update_m_free() {
 
-    int index = (FREE_LIST.m_free) % sizeof(HEAP_OBJECT);
-
-    if (index >= HEAP_SIZE) {
-        printf("Whoops, went too far along the heap\n");
-        exit(1);
+    if (FREE_LIST.num_objects >= HEAP_SIZE) {
+        // call garbage collect
+        printf("Stopping to collect garbage\n");
+        //garbage_collect();
     }
 
-    // FREE_LIST.memory_pool + FREE_LIST.m_free = new_object;
-    // FREE_LIST.m_free += sizeof(HEAP_OBJECT);
+    // if for some reason even after garbage collection
+    // there is no space on the heap, return
+    if (FREE_LIST.num_objects >= HEAP_SIZE) {
+        printf("Heap is currently full\n");
+        return;
+    }
 
-    update_bitarray();
+    // this is the memory at the addr that was just allocated
+    // we need to find new chunk of free space for the next
+    // allocation
+    int index = (FREE_LIST.m_free) / sizeof(HEAP_OBJECT);
+
+    int i, bit_addr;
+    for (i = index; i < (index + HEAP_SIZE); i++) {
+        bit_addr = i % HEAP_SIZE;
+        // if 0, we've found an available chunk of memory
+        if (BITARRAY.m_map[bit_addr] == 0) {
+            // break out of the loop
+            break;
+        }
+    }
+   
+    // update the free list ot the next available chunk of memory
+    FREE_LIST.m_free = sizeof(HEAP_OBJECT) * bit_addr;
 }
 
+// actually finding the free space in the memory pool
 HEAP_OBJECT * halloc() {
-    int index = (FREE_LIST.m_free) % sizeof(HEAP_OBJECT);
-    bool garbage_collect = 1;
     HEAP_OBJECT *ptr;
-
-    if (index >= HEAP_SIZE) {
-        // we are at the end of the heap, 
-        // need to see if/where there are free chunks and if not
-        // call the garbage collector
-        int i;
-        for (i = 0; i < HEAP_SIZE; i++) {
-            // this spot is free
-            if (BITARRAY.m_map[i] == 0) {
-                index = i;
-                garbage_collect = 0; // set garbage collect to false
-                break;
-            }
-        }
-    } 
-
-    // else we can just go sequentially
-
-    if (garbage_collect == 1) {
-        // need to call garbage collect
-        printf("Stopping to collect garbage");
-        // once garbage collection done, call halloc again
-        garbage_collect();
-        halloc();
-    } else {
-        // we can allocate the chunk in the memory pool
-        ptr = (HEAP_OBJECT *)(FREE_LIST.memory_pool + FREE_LIST.m_free);
-    }
-
+    ptr = (HEAP_OBJECT *)(FREE_LIST.memory_pool + FREE_LIST.m_free);
     // set object as not marked
     ptr->marked = 0;
     // give object an address in the memory pool
     ptr->address = FREE_LIST.m_free;
+    FREE_LIST.num_objects++;
 
-    // update the free list ot the next available chunk of memory
-    // should this be done in another function?
-    FREE_LIST.m_free += sizeof(HEAP_OBJECT);
-
+    update_bitarray((FREE_LIST.m_free) / sizeof(HEAP_OBJECT));
+    // get the next halloc ready to allocate chunk by finding the
+    // next available spot of memory
+    update_m_free();
     return ptr;
 }
-
 
 // creates, doesn't set value
 HEAP_OBJECT * create_heap_object() {
     HEAP_OBJECT *ptr = halloc();
-    update_heap(ptr);
-
     return ptr;
 }
 
@@ -201,18 +196,18 @@ void print_object(HEAP_OBJECT *obj) {
     }
 }
 
-void garbage_collect() {
-    mark(); // pass root set?
-    sweep();
-}
+// void garbage_collect() {
+//     mark(); // pass root set?
+//     sweep();
+// }
 
-void mark() {
+// void mark() {
 
-}
+// }
 
-void sweep() {
+// void sweep() {
     
-}
+// }
 
 int main() {
 
