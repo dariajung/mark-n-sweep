@@ -7,9 +7,9 @@ void update_m_free();
 void garbage_collect();
 
 // inefficient char array first to represent bit array
-struct bitarray {
-    unsigned char m_map[HEAP_SIZE];
-} BITARRAY;
+// struct bitarray {
+//     unsigned char m_map[HEAP_SIZE];
+// } BITARRAY;
 
 // a heap object / CHUNK in memory pool
 typedef struct heap_object {
@@ -62,6 +62,8 @@ struct free_list {
     /* head of linked list of allocated objects */
     HEAP_OBJECT *head;
 
+    unsigned char m_map[HEAP_SIZE];
+
     /* number of objects allocated on the heap */
     int num_objects;
 
@@ -76,31 +78,28 @@ void init_heap() {
 
     FREE_LIST.head = NULL;
     FREE_LIST.num_objects = 0;
-}
 
-// unclear if this is necessary
-void init_bitarray() {
     int i;
     for (i = 0; i < HEAP_SIZE; i++) {
-        BITARRAY.m_map[i] = 0;
+        FREE_LIST.m_map[i] = 0;
     }
 }
 
 void mark_bitarray(int index) {
     // mark as not free
-    BITARRAY.m_map[index] = 1;
+    FREE_LIST.m_map[index] = 1;
 }
 
 void unmark_bitarray(int index) {
     // mark as free
-    BITARRAY.m_map[index] = 0;
+    FREE_LIST.m_map[index] = 0;
 }
 
 void print_bitarray() {
     int i;
     printf("\r\n");
     for (i = 0; i < HEAP_SIZE; i++) {
-        printf("%d", BITARRAY.m_map[i]);
+        printf("%d", FREE_LIST.m_map[i]);
     }
     printf("\r\n");
 }
@@ -129,7 +128,7 @@ void update_m_free() {
     for (i = index; i < (index + HEAP_SIZE); i++) {
         bit_addr = i % HEAP_SIZE;
         // if 0, we've found an available chunk of memory
-        if (BITARRAY.m_map[bit_addr] == 0) {
+        if (FREE_LIST.m_map[bit_addr] == 0) {
             // break out of the loop
             break;
         }
@@ -214,27 +213,27 @@ void print_object(HEAP_OBJECT *obj) {
     }
 }
 
-void mark(HEAP_OBJECT *obj) {
-    if (obj->marked) return;
+// void mark(HEAP_OBJECT *obj) {
+//     if (obj->marked) return;
 
-    obj->marked = 1;
+//     obj->marked = 1;
 
-    // type 1 means cons cell
-    if (obj->type == 1) {
-        mark(obj->car);
-        mark(obj->cdr);
-    }
-}
+//     // type 1 means cons cell
+//     if (obj->type == 1) {
+//         mark(obj->car);
+//         mark(obj->cdr);
+//     }
+// }
 
-void mark_all() {
-    // annoying, O(N)
-    int i;
-    for (i = 0; i < HEAP_SIZE; i++) {
-        if (ROOT_SET[i]) {
-            mark(ROOT_SET[i]);
-        }
-    }
-}
+// void mark_all() {
+//     // annoying, O(N)
+//     int i;
+//     for (i = 0; i < HEAP_SIZE; i++) {
+//         if (ROOT_SET[i]) {
+//             mark(ROOT_SET[i]);
+//         }
+//     }
+// }
 
 void sweep() {
     printf("sweepy sweep\n");
@@ -262,14 +261,11 @@ void add_to_root_set() {
 }
 
 void garbage_collect() {
-    mark_all(); // pass root set?
+    //mark_all(); // pass root set?
     sweep();
 }
 
 int main() {
-
-    //init bitarray
-    init_bitarray();
 
     init_heap();
     HEAP_OBJECT *new_object = create_integer(7);
