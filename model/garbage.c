@@ -22,58 +22,6 @@ void print_object(HEAP_OBJECT *obj) {
     }
 }
 
-// void mark(HEAP_OBJECT *obj) {
-//     if (obj->marked) return;
-
-//     obj->marked = 1;
-
-//     // type 1 means cons cell
-//     if (obj->type == 1) {
-//         mark(obj->car);
-//         mark(obj->cdr);
-//     }
-// }
-
-// void mark_all() {
-//     // annoying, O(N)
-//     int i;
-//     for (i = 0; i < HEAP_SIZE; i++) {
-//         if (ROOT_SET[i]) {
-//             mark(ROOT_SET[i]);
-//         }
-//     }
-// }
-
-void sweep() {
-    printf("sweepy sweep\n");
-    int i;
-    for (i = 0; i < HEAP_SIZE; i++) {
-        // access object at ith chunk of memory in
-        // memory pool
-        HEAP_OBJECT *ptr = (HEAP_OBJECT *)(HEAP.memory_pool + sizeof(HEAP_OBJECT)*i);
-        // this was something that was unreachable
-        if (ptr->marked == 0) {
-            // need to "free"
-            printf("unreachable\n");
-            hfree(i);
-        } else {
-            printf("reachable");
-            ptr->marked = 0;
-        }
-    }
-
-    update_m_free();
-}
-
-void add_to_root_set() {
-
-}
-
-void garbage_collect() {
-    //mark_all(); // pass root set?
-    sweep();
-}
-
 int main() {
 
     init_heap();

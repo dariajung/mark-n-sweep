@@ -2,16 +2,12 @@
 #include <stdlib.h>
 
 /* --------------------
-
-The heap will hold 100 fixed sized objects.
-
+    The heap will hold 100 fixed sized objects.
 --------------------- */
 #define HEAP_SIZE   100
 
 /* ------------------------
-
-A global variable to represent NIL objects in cons cells
-
+    A global variable to represent NIL objects in cons cells
 ------------------------ */
 #define NIL     NULL
 
@@ -19,21 +15,8 @@ void update_m_free();
 void garbage_collect();
 
 /* ------------------------
-
-Not a true bit vector/an inefficient char array to represent a bit vector
-for the purposes of modeling. 
-    
------------------------- */
-struct bitarray {
-
-    unsigned char m_map[HEAP_SIZE];
-
-} BITARRAY;
-
-/* ------------------------
-
-a heap object / CHUNK in the heap.
-
+    Struct representing a heap object 
+    / CHUNK in the heap.
 ------------------------*/
 typedef struct heap_object {
 
@@ -52,11 +35,9 @@ typedef struct heap_object {
     unsigned char * address;
     
     /* ------------------------
-    
     A union object representing the
     data itself in a heap object. A heap object can
     either be an Integer, or a CONS cell.
-    
     ------------------------ */
     union {
         /* An actual integer value */
@@ -71,14 +52,12 @@ typedef struct heap_object {
 } HEAP_OBJECT;
 
 /* ------------------------
-
-An arbitrary representation of the root set using an
-array of HEAP_OBJECTs. Clearly this is not the most
-efficient way of doing this, but for the purposes of 
-a model, suffices. The representation of the root set
-is also dependent on the eventual programming language
-environment. 
-
+    An arbitrary representation of the root set using an
+    array of HEAP_OBJECTs. Clearly this is not the most
+    efficient way of doing this, but for the purposes of 
+    a model, suffices. The representation of the root set
+    is also dependent on the eventual programming language
+    environment. 
 ------------------------*/
 
 struct root_set {
@@ -86,25 +65,31 @@ struct root_set {
 } ROOT_SET;
 
 /* ------------------------
-
-The total size of heap is 100 heap objects of fixed size. 
-The free list is a list of free chunks of memory.
-On request for memory allocation, a free block is chosen. 
-The m_free pointer points to the next free block. 
-For simplicity, we are using contiguous/sequential allocation.
-
+    The total size of heap is 100 heap objects of fixed size. 
+    The free list is a list of free chunks of memory.
+    On request for memory allocation, a free block is chosen. 
+    The m_free pointer points to the next free block. 
+    For simplicity, we are using contiguous/sequential allocation.
 ------------------------*/
 
 struct heap {
-    /* pointer to entire memory pool */
+
+    /* pointer to beginning of the heap */
     unsigned char *memory_pool;
 
-    /* The index or "pointer" to the next free space in the free list */ 
+    /* The index or "pointer" to the next free space in the heap */ 
     int m_free;
 
     /* head of linked list of allocated objects */
     HEAP_OBJECT *head;
 
+    /* --------------------------------------
+        Not a true bit vector/an inefficient char array
+        for the purposes of modeling. 
+
+        A map denoting which objects within the heap 
+        have been allocated or are free.
+    -------------------------------------- */
     unsigned char m_map[HEAP_SIZE];
 
     /* number of objects allocated on the heap */
@@ -113,7 +98,9 @@ struct heap {
 } HEAP;
 
 void init_heap() {
-    /* let's pre-allocate a memory pool */
+    int i;
+
+    /* let's pre-allocate a memory pool that will serve as our "heap" */
     HEAP.memory_pool = malloc(sizeof(struct heap_object) * HEAP_SIZE);
 
     /* the first available spot in the memory pool */
@@ -122,19 +109,23 @@ void init_heap() {
     HEAP.head = NULL;
     HEAP.num_objects = 0;
 
-    int i;
+    /* ----------------------------------------------------
+        Initialize the heap memory map to all 0s to denote
+        that we are starting from a clean heap with no 
+        objects allocated on it. 
+    ---------------------------------------------------- */
     for (i = 0; i < HEAP_SIZE; i++) {
         HEAP.m_map[i] = 0;
     }
 }
 
 void mark_bitarray(int index) {
-    // mark as not free
+    /* mark index/chunk as allocated */
     HEAP.m_map[index] = 1;
 }
 
 void unmark_bitarray(int index) {
-    // mark as free
+    /* mark index/chunk as free */
     HEAP.m_map[index] = 0;
 }
 
@@ -233,4 +224,56 @@ HEAP_OBJECT * create_cons(HEAP_OBJECT *car, HEAP_OBJECT *cdr) {
     ptr->cdr = cdr;
 
     return ptr;
+}
+
+// void mark(HEAP_OBJECT *obj) {
+//     if (obj->marked) return;
+
+//     obj->marked = 1;
+
+//     // type 1 means cons cell
+//     if (obj->type == 1) {
+//         mark(obj->car);
+//         mark(obj->cdr);
+//     }
+// }
+
+// void mark_all() {
+//     // annoying, O(N)
+//     int i;
+//     for (i = 0; i < HEAP_SIZE; i++) {
+//         if (ROOT_SET[i]) {
+//             mark(ROOT_SET[i]);
+//         }
+//     }
+// }
+
+void sweep() {
+    printf("sweepy sweep\n");
+    int i;
+    for (i = 0; i < HEAP_SIZE; i++) {
+        // access object at ith chunk of memory in
+        // memory pool
+        HEAP_OBJECT *ptr = (HEAP_OBJECT *)(HEAP.memory_pool + sizeof(HEAP_OBJECT)*i);
+        // this was something that was unreachable
+        if (ptr->marked == 0) {
+            // need to "free"
+            printf("unreachable\n");
+            hfree(i);
+        } else {
+            printf("reachable");
+            ptr->marked = 0;
+        }
+    }
+
+    update_m_free();
+}
+
+void add_to_root_set() {
+
+}
+
+void garbage_collect() {
+    //mark_all(); // pass root set?
+    sweep();
 }
