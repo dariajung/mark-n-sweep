@@ -86,6 +86,8 @@ struct heap {
     /* pointer to the end of the heap */
     void * memory_boundary;
 
+    size_t heap_size;
+
     /* The pointer to the next free address in the heap */ 
     void * m_free;
 
@@ -126,6 +128,7 @@ void init_heap() {
         the address of where the memory pool itself begins. 
     ------------------------------------------------ */
     HEAP.m_free = HEAP.memory_pool; 
+    HEAP.heap_size = HEAP.memory_boundary - HEAP.memory_pool;
     HEAP.index = 0;
     
     HEAP.head = NULL;
@@ -189,11 +192,9 @@ void update_m_free() {
         we need to find new chunk of free space for the next
         allocation.
     -----------------------------------------  */
-    int index = HEAP.index;
 
     int i;
-    void * addr = HEAP.m_free;
-    for (i = index; i < (index + HEAP_SIZE); i++) {
+    for (i = HEAP.index; i < (HEAP.index + HEAP_SIZE); i++) {
         // if 0, we've found an available chunk of memory
         if (HEAP.m_map[(i % HEAP_SIZE)] == 0) {
             /* -----------------------------------------------
@@ -201,15 +202,9 @@ void update_m_free() {
                 Update m_free to point to the address of the
                 next available chunk of memory.
             ----------------------------------------------- */
-            HEAP.m_free = addr;
+            HEAP.m_free = HEAP.memory_pool + sizeof(HEAP_OBJECT)*(i % HEAP_SIZE);
             HEAP.index = i % HEAP_SIZE;
             break;
-        }
-
-        if (addr < HEAP.memory_boundary) {
-            addr += sizeof(HEAP_OBJECT);
-        } else {
-            addr = HEAP.memory_pool;
         }
     }
 }
@@ -227,12 +222,6 @@ HEAP_OBJECT * halloc() {
 
     mark_bitarray(HEAP.index);
     print_heap();
-    HEAP.index++;
-    if (HEAP.m_free < HEAP.memory_boundary) {
-        HEAP.m_free += sizeof(HEAP_OBJECT);
-    } else {
-        HEAP.m_free = HEAP.memory_pool;
-    }
 
     printf("HEAP INDEX %d\n", HEAP.index);
 
@@ -354,6 +343,8 @@ void sweep() {
             ptr->marked = 0;
         }
     }
+
+    update_m_free();
 }
 
 /* ================================================== */

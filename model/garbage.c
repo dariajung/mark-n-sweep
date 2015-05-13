@@ -26,25 +26,18 @@ void print_object(HEAP_OBJECT *obj) {
 
 void test() {
 
-    //printf("nothing allocated %p\n", HEAP.m_free);
-
     HEAP_OBJECT *obj1 = create_integer(7);
-    //printf("m_free obj1: %p\n", HEAP.m_free);
 
     HEAP_OBJECT *obj2 = create_integer(8);
-    //printf("m_free obj2: %p\n", HEAP.m_free);
 
     HEAP_OBJECT *null_obj = create_NIL();
-    //printf("m_free null object: %p\n", HEAP.m_free);
 
     HEAP_OBJECT *cons = create_cons(obj1, null_obj);
-    //printf("m_free cons: %p\n", HEAP.m_free);
 
     printf("obj1 addr %p\n", obj1->address);
     printf("cons addr %p\n", cons->address);
 
     print_object(cons);
-    //printf("\nnumber of objects on heap %d\n", HEAP.num_objects);
     print_heap();
 
     // deliberately mark cons as a root object
@@ -57,9 +50,15 @@ void test() {
 
     sweep();
 
-    //garbage_collect();
     print_heap();
-    printf("current heap index %d\n", HEAP.index);
+
+    HEAP_OBJECT *obj3 = create_integer(9);
+
+    print_heap();
+
+    garbage_collect();
+
+    print_heap();
 }
 
 int main() {
