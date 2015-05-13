@@ -6,15 +6,17 @@ CXXFLAGS = -g -Wall $(INCLUDES)
 
 LDFLAGS = -g
 
-.PHONY: default
-default: garbage
-
-# header dependency
-garbage.o: garbage.c
-
-.PHONY: clean
-clean:
-	rm -f *.o *~ a.out core garbage
+.PHONY: garbage
 
 .PHONY: all
-all: clean default
+
+all: garbage
+
+garbage: 
+	gcc -Wall -o garbage garbage.c
+
+# slist:
+# 	gcc -Wall -o slist slist.c
+
+clean:
+	rm -f *.o *~ a.out core garbage
