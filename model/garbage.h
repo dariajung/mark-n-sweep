@@ -11,6 +11,8 @@
 ------------------------ */
 #define NIL     NULL
 
+//HEAP *heap;
+
 void update_m_free();
 void garbage_collect();
 
@@ -34,7 +36,7 @@ typedef struct heap_object {
     struct heap_object *next;
 
     /* An "address" in FREE_LIST, or index in the free_list array */
-    unsigned char * address;
+    void * address;
     
     /* ------------------------
     A union object representing the
@@ -55,15 +57,16 @@ typedef struct heap_object {
 
 /* ------------------------
     An arbitrary representation of the root set using an array of
-    indicies. Clearly this is not the most
-    efficient way of doing this, but for the purposes of 
-    a model, suffices. The representation of the root set
-    is also dependent on the eventual programming language
-    environment. 
+    ints, which represent indicies in the heap's internal array. 
+    Clearly this is not the most efficient way of doing this, 
+    but for the purposes of a model, suffices. 
+    The representation of the root set is also dependent on the 
+    eventual programming language environment. 
 ------------------------*/
 struct root_set {
 
-    int * roots[HEAP_SIZE];
+    void * roots[HEAP_SIZE];
+    int curr;
 
 } ROOT_SET;
 
@@ -78,7 +81,7 @@ struct root_set {
 struct heap {
 
     /* pointer to beginning of the heap */
-    void * *memory_pool;
+    void * memory_pool;
 
     /* pointer to the end of the heap */
     void * memory_boundary;
@@ -202,10 +205,12 @@ void update_m_free() {
         next available chunk of memory.
     ----------------------------------------------- */
     HEAP.m_free = addr;
+    HEAP.index++;
 }
 
 /* Actually allocating the free space in the memory pool */
 HEAP_OBJECT * halloc() {
+    printf("halloc\n");
     HEAP_OBJECT *ptr;
     ptr = (HEAP_OBJECT *)(HEAP.m_free);
     /* set object as not marked */
@@ -239,6 +244,7 @@ HEAP_OBJECT * create_heap_object() {
 }
 
 HEAP_OBJECT * create_integer(int value) {
+    //printf("create integer\n");
     HEAP_OBJECT *ptr = create_heap_object();
     ptr->type = 0; // 0 because int
     ptr->value = value; // set value to value
@@ -246,7 +252,7 @@ HEAP_OBJECT * create_integer(int value) {
     return ptr;
 }
 
-HEAP_OBJECT * create_NULL() {
+HEAP_OBJECT * create_NIL() {
     HEAP_OBJECT *ptr = NIL;
 
     return ptr;
@@ -261,27 +267,29 @@ HEAP_OBJECT * create_cons(HEAP_OBJECT *car, HEAP_OBJECT *cdr) {
     return ptr;
 }
 
-// void mark(HEAP_OBJECT *obj) {
-//     if (obj->marked) return;
+void mark(HEAP_OBJECT *obj) {
+    if (obj->marked) return;
 
-//     obj->marked = 1;
+    obj->marked = 1;
 
-//     // type 1 means cons cell
-//     if (obj->type == 1) {
-//         mark(obj->car);
-//         mark(obj->cdr);
-//     }
-// }
+    // type 1 means cons cell
+    if (obj->type == 1) {
+        mark(obj->car);
+        mark(obj->cdr);
+    }
+}
 
-// void mark_all() {
-//     // annoying, O(N)
-//     int i;
-//     for (i = 0; i < HEAP_SIZE; i++) {
-//         if (ROOT_SET[i]) {
-//             mark(ROOT_SET[i]);
-//         }
-//     }
-// }
+void mark_all() {
+    // annoying, O(N)
+    int i;
+    HEAP_OBJECT * obj;
+    for (i = 0; i < HEAP_SIZE; i++) {
+        if (ROOT_SET.roots[i]) {
+            obj = HEAP.memory_pool + (i * (sizeof(HEAP_OBJECT)));
+            mark(obj);
+        }
+    }
+}
 
 void sweep() {
     printf("sweepy sweep\n");
@@ -296,7 +304,7 @@ void sweep() {
             printf("unreachable\n");
             hfree(i);
         } else {
-            printf("reachable");
+            printf("reachable\n");
             ptr->marked = 0;
         }
     }
@@ -304,8 +312,22 @@ void sweep() {
     update_m_free();
 }
 
-void add_to_root_set() {
+/* ================================================== */
+/*  Functions for mimicking the behavior of a rootset */
+/* ================================================== */
 
+void init_root_set() {
+    int i;
+
+    for (i = 0; i < HEAP_SIZE; i++) {
+        ROOT_SET.roots[i] = NULL;
+    }
+
+    ROOT_SET.curr = 0;
+}
+
+void add_to_root_set(HEAP_OBJECT *obj) {
+    ROOT_SET.roots[ROOT_SET.curr] = obj->address;
 }
 
 void garbage_collect() {
