@@ -4,7 +4,7 @@
 /* --------------------
     The heap will hold 100 fixed sized objects.
 --------------------- */
-#define HEAP_SIZE   100
+#define HEAP_SIZE   3
 
 /* ------------------------
     A global variable to represent NIL objects in cons cells
@@ -58,8 +58,8 @@ typedef struct heap_object {
 /* ------------------------
     An arbitrary representation of the root set using an array of
     ints, which represent indicies in the heap's internal array. 
-    Clearly this is not the most efficient way of doing this, 
-    but for the purposes of a model, suffices. 
+    Clearly this is not the most efficient way of doing this; 
+    a linked list would be much better.
     The representation of the root set is also dependent on the 
     eventual programming language environment. 
 ------------------------*/
@@ -164,11 +164,13 @@ void print_heap() {
 /* Update the index of m_free */
 void update_m_free() {
 
-    if (HEAP.num_objects >= HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
-        /* -----------------------------------------
-            Call garbage collect, we no longer have
-            any free space for allocating new objects. 
-        ----------------------------------------- */
+    printf("update m free called\n");
+
+    /* -----------------------------------------
+        Call garbage collect, we no longer have
+        any free space for allocating new objects. 
+    ----------------------------------------- */
+    if (HEAP.num_objects > HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
         printf("Stopping to collect garbage\n");
         garbage_collect();
     }
@@ -177,7 +179,7 @@ void update_m_free() {
         If for some reason even after garbage collection
         there is no space on the heap, return 
     --------------------------------------------------- */
-    if (HEAP.num_objects >= HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
+    if (HEAP.num_objects > HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
         printf("Heap is currently full\n");
         return;
     }
@@ -192,25 +194,29 @@ void update_m_free() {
     int i;
     void * addr = HEAP.m_free;
     for (i = index; i < (index + HEAP_SIZE); i++) {
-        addr += sizeof(HEAP_OBJECT);
         // if 0, we've found an available chunk of memory
-        if (HEAP.m_map[i] == 0) {
-            // break out of the loop
+        if (HEAP.m_map[(i % HEAP_SIZE)] == 0) {
+            /* -----------------------------------------------
+                Break out of the loop.
+                Update m_free to point to the address of the
+                next available chunk of memory.
+            ----------------------------------------------- */
+            HEAP.m_free = addr;
+            HEAP.index = i % HEAP_SIZE;
             break;
         }
+
+        if (addr < HEAP.memory_boundary) {
+            addr += sizeof(HEAP_OBJECT);
+        } else {
+            addr = HEAP.memory_pool;
+        }
     }
-   
-    /* -----------------------------------------------
-        Update m_free to point to the address of the
-        next available chunk of memory.
-    ----------------------------------------------- */
-    HEAP.m_free = addr;
-    HEAP.index++;
 }
 
 /* Actually allocating the free space in the memory pool */
 HEAP_OBJECT * halloc() {
-    printf("halloc\n");
+    //printf("halloc\n");
     HEAP_OBJECT *ptr;
     ptr = (HEAP_OBJECT *)(HEAP.m_free);
     /* set object as not marked */
@@ -220,6 +226,17 @@ HEAP_OBJECT * halloc() {
     HEAP.num_objects++;
 
     mark_bitarray(HEAP.index);
+    print_heap();
+    HEAP.index++;
+    if (HEAP.m_free < HEAP.memory_boundary) {
+        HEAP.m_free += sizeof(HEAP_OBJECT);
+    } else {
+        HEAP.m_free = HEAP.memory_pool;
+    }
+
+    printf("HEAP INDEX %d\n", HEAP.index);
+
+
     /* ------------------------------------------------
         Get the next halloc ready to allocate chunk by 
         finding the next available spot of memory.
@@ -233,6 +250,7 @@ HEAP_OBJECT * halloc() {
     is marked as available for memory allocation.
 ------------------------------------------------ */
 void hfree(int i) {
+    printf("hfreeing %dth index\n", i);
     unmark_bitarray(i);
     HEAP.num_objects--;
 }
@@ -268,12 +286,25 @@ HEAP_OBJECT * create_cons(HEAP_OBJECT *car, HEAP_OBJECT *cdr) {
 }
 
 void mark(HEAP_OBJECT *obj) {
-    if (obj->marked) return;
+
+    printf("Marking!\n");
+
+    if (!obj) {
+        // printf("It's a NIL\n");
+        return;
+    }
+
+    if (obj->type == 0) {
+        printf("it's an int: %d\n", obj->value);
+    }
+
+    if (obj->marked == 1) return;
 
     obj->marked = 1;
 
     // type 1 means cons cell
     if (obj->type == 1) {
+        printf("it's a cons\n");
         mark(obj->car);
         mark(obj->cdr);
     }
@@ -282,34 +313,47 @@ void mark(HEAP_OBJECT *obj) {
 void mark_all() {
     // annoying, O(N)
     int i;
+
     HEAP_OBJECT * obj;
     for (i = 0; i < HEAP_SIZE; i++) {
         if (ROOT_SET.roots[i]) {
-            obj = HEAP.memory_pool + (i * (sizeof(HEAP_OBJECT)));
+            obj = (HEAP_OBJECT *)ROOT_SET.roots[i];
             mark(obj);
         }
     }
 }
 
+
+/* Look at this in a bit */
 void sweep() {
     printf("sweepy sweep\n");
     int i;
     for (i = 0; i < HEAP_SIZE; i++) {
+
         // access object at ith chunk of memory in
         // memory pool
         HEAP_OBJECT *ptr = (HEAP_OBJECT *)(HEAP.memory_pool + sizeof(HEAP_OBJECT)*i);
+
+        printf("%p\n", (HEAP.memory_pool + sizeof(HEAP_OBJECT)*i));
+
         // this was something that was unreachable
         if (ptr->marked == 0) {
+            if (ptr->type == 0) {
+                printf("int %d", ptr->value);
+            }
             // need to "free"
-            printf("unreachable\n");
+            printf(" - unreachable\n");
             hfree(i);
         } else {
-            printf("reachable\n");
+            if (ptr->type == 0) {
+                printf("int %d", ptr->value);
+            } else {
+                printf("cons");
+            }
+            printf(" - reachable\n");
             ptr->marked = 0;
         }
     }
-
-    update_m_free();
 }
 
 /* ================================================== */
@@ -322,15 +366,18 @@ void init_root_set() {
     for (i = 0; i < HEAP_SIZE; i++) {
         ROOT_SET.roots[i] = NULL;
     }
-
     ROOT_SET.curr = 0;
 }
 
 void add_to_root_set(HEAP_OBJECT *obj) {
+    printf("I've been called!\n");
     ROOT_SET.roots[ROOT_SET.curr] = obj->address;
+    ROOT_SET.curr++;
 }
 
 void garbage_collect() {
-    //mark_all(); // pass root set?
+    mark_all(); // pass root set?
+
+    printf("we are sweeping now\n");
     sweep();
 }
