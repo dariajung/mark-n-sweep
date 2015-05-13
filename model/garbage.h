@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* --------------------
     The heap will hold 100 fixed sized objects.
 --------------------- */
-#define HEAP_SIZE   3
+#define HEAP_SIZE   100
 
 /* ------------------------
     A global variable to represent NIL objects in cons cells
@@ -183,8 +184,8 @@ void update_m_free() {
         there is no space on the heap, return 
     --------------------------------------------------- */
     if (HEAP.num_objects > HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
-        printf("Heap is currently full\n");
-        return;
+        printf("Heap is currently full. Exiting\n");
+        exit(1);
     }
 
     /* -----------------------------------------
@@ -332,6 +333,7 @@ void sweep() {
             }
             // need to "free"
             printf(" - unreachable\n");
+            memset(ptr, 0, sizeof(HEAP_OBJECT));
             hfree(i);
         } else {
             if (ptr->type == 0) {
