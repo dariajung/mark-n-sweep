@@ -2,27 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* --------------------
-    The heap will hold 100 fixed sized objects.
---------------------- */
+/* =========================================
+The heap will hold 100 fixed sized objects.
+========================================== */
 #define HEAP_SIZE   100
 
-/* ------------------------
-    A global variable to represent NIL objects in cons cells
------------------------- */
+/* ======================================================
+A global variable to represent NIL objects in cons cells
+====================================================== */
 #define NIL     NULL
-
-//HEAP *heap;
 
 void update_m_free();
 void garbage_collect();
 
-/* ------------------------
-    Struct representing a heap object 
-    / CHUNK in the heap. 
-    Here, we are emulating a simple LISP object that may
-    only be one of two types, INTEGER or CONS.
-------------------------*/
+/* ================================================
+Struct representing a heap object / CHUNK in the heap. 
+Here, we are emulating a simple LISP object that may
+only be one of two types, INTEGER or CONS.
+================================================== */
 typedef struct heap_object {
 
     /* type - 0 for integer */
@@ -39,11 +36,11 @@ typedef struct heap_object {
     /* An "address" in FREE_LIST, or index in the free_list array */
     void * address;
     
-    /* ------------------------
+    /* ============================================
     A union object representing the
     data itself in a heap object. A heap object can
     either be an Integer, or a CONS cell.
-    ------------------------ */
+    ============================================ */
     union {
         /* An actual integer value */
         int value;
@@ -56,14 +53,16 @@ typedef struct heap_object {
     };
 } HEAP_OBJECT;
 
-/* ------------------------
-    An arbitrary representation of the root set using an array of
-    ints, which represent indicies in the heap's internal array. 
-    Clearly this is not the most efficient way of doing this; 
-    a linked list would be much better.
-    The representation of the root set is also dependent on the 
-    eventual programming language environment. 
-------------------------*/
+/* ==============================================================
+An arbitrary representation of the root set using an array of
+ints, which represent indicies in the heap's internal array. 
+
+Clearly this is not the most efficient way of doing this; 
+a linked list would be much better.
+
+The representation of the root set is also dependent on the 
+eventual programming language environment. 
+============================================================== */
 struct root_set {
 
     void * roots[HEAP_SIZE];
@@ -71,13 +70,13 @@ struct root_set {
 
 } ROOT_SET;
 
-/* ------------------------
+/* =============================================================
     The total size of heap is 100 heap objects of fixed size. 
     The free list is a list of free chunks of memory.
     On request for memory allocation, a free block is chosen. 
     The m_free pointer points to the next free block. 
     For simplicity, we are using contiguous/sequential allocation.
-------------------------*/
+=============================================================== */
 
 struct heap {
 
@@ -95,21 +94,21 @@ struct heap {
     /* Actual index within bit vector representation */
     int index;
 
-    /* ------------------------------------------------
+    /* ================================================
         Head of linked list of allocated objects.
         Ended up being unused in this implementation,
         but would make it more convenient to traverse
         all objects occupying allocated space in the heap.
-    ------------------------------------------------  */
+    ================================================  */
     HEAP_OBJECT *head;
 
-    /* --------------------------------------
+    /* ================================================
         Not a true bit vector/an inefficient char array
         for the purposes of modeling. 
 
         A map denoting which objects within the heap 
         have been allocated or are free.
-    -------------------------------------- */
+    ================================================ */
     unsigned char m_map[HEAP_SIZE];
 
     /* number of objects allocated on the heap */
@@ -124,10 +123,10 @@ void init_heap() {
     HEAP.memory_pool = malloc(sizeof(struct heap_object) * HEAP_SIZE);
     HEAP.memory_boundary = HEAP.memory_pool + (sizeof(HEAP_OBJECT)) * HEAP_SIZE;
 
-    /* ------------------------------------------------
+    /* ================================================
         The first available spot in the memory pool is 
         the address of where the memory pool itself begins. 
-    ------------------------------------------------ */
+    ================================================ */
     HEAP.m_free = HEAP.memory_pool; 
     HEAP.heap_size = HEAP.memory_boundary - HEAP.memory_pool;
     HEAP.index = 0;
@@ -135,11 +134,11 @@ void init_heap() {
     HEAP.head = NULL;
     HEAP.num_objects = 0;
 
-    /* ----------------------------------------------------
+    /* =================================================
         Initialize the heap memory map to all 0s to denote
         that we are starting from a clean heap with no 
         objects allocated on it. 
-    ---------------------------------------------------- */
+    =================================================== */
     for (i = 0; i < HEAP_SIZE; i++) {
         HEAP.m_map[i] = 0;
     }
@@ -170,39 +169,39 @@ void update_m_free() {
 
     printf("update m free called\n");
 
-    /* -----------------------------------------
+    /* ==============================================
         Call garbage collect, we no longer have
         any free space for allocating new objects. 
-    ----------------------------------------- */
+    ================================================ */
     if (HEAP.num_objects > HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
         printf("Stopping to collect garbage\n");
         garbage_collect();
     }
 
-    /* --------------------------------------------------
+    /* ================================================
         If for some reason even after garbage collection
         there is no space on the heap, return 
-    --------------------------------------------------- */
+    ================================================ */
     if (HEAP.num_objects > HEAP_SIZE || HEAP.m_free > HEAP.memory_boundary) {
         printf("Heap is currently full. Exiting\n");
         exit(1);
     }
 
-    /* -----------------------------------------
+    /* =======================================================
         This is the memory at the addr that was just allocated
         we need to find new chunk of free space for the next
         allocation.
-    -----------------------------------------  */
+    ======================================================== */
 
     int i;
     for (i = HEAP.index; i < (HEAP.index + HEAP_SIZE); i++) {
         // if 0, we've found an available chunk of memory
         if (HEAP.m_map[(i % HEAP_SIZE)] == 0) {
-            /* -----------------------------------------------
+            /* ================================================
                 Break out of the loop.
                 Update m_free to point to the address of the
                 next available chunk of memory.
-            ----------------------------------------------- */
+            ================================================ */
             HEAP.m_free = HEAP.memory_pool + sizeof(HEAP_OBJECT)*(i % HEAP_SIZE);
             HEAP.index = i % HEAP_SIZE;
             break;
@@ -227,18 +226,18 @@ HEAP_OBJECT * halloc() {
     printf("HEAP INDEX %d\n", HEAP.index);
 
 
-    /* ------------------------------------------------
+    /* ================================================
         Get the next halloc ready to allocate chunk by 
         finding the next available spot of memory.
-    ------------------------------------------------ */
+    ================================================ */
     update_m_free();
     return ptr;
 }
 
-/* ------------------------------------------------
+/* ================================================
     "Frees" the object from the heap, and its address 
     is marked as available for memory allocation.
------------------------------------------------- */
+================================================ */
 void hfree(int i) {
     printf("hfreeing %dth index\n", i);
     unmark_bitarray(i);
@@ -280,7 +279,6 @@ void mark(HEAP_OBJECT *obj) {
     printf("Marking!\n");
 
     if (!obj) {
-        // printf("It's a NIL\n");
         return;
     }
 
@@ -320,28 +318,18 @@ void sweep() {
     int i;
     for (i = 0; i < HEAP_SIZE; i++) {
 
-        // access object at ith chunk of memory in
-        // memory pool
+        /* access object at ith chunk of memory in heap */
         HEAP_OBJECT *ptr = (HEAP_OBJECT *)(HEAP.memory_pool + sizeof(HEAP_OBJECT)*i);
 
         printf("%p\n", (HEAP.memory_pool + sizeof(HEAP_OBJECT)*i));
 
-        // this was something that was unreachable
+        /* this was something that was unreachable */
         if (ptr->marked == 0) {
-            if (ptr->type == 0) {
-                printf("int %d", ptr->value);
-            }
-            // need to "free"
-            printf(" - unreachable\n");
+            printf("unreachable\n");
             memset(ptr, 0, sizeof(HEAP_OBJECT));
             hfree(i);
         } else {
-            if (ptr->type == 0) {
-                printf("int %d", ptr->value);
-            } else {
-                printf("cons");
-            }
-            printf(" - reachable\n");
+            printf("reachable\n");
             ptr->marked = 0;
         }
     }
