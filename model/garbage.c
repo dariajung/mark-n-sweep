@@ -3,13 +3,13 @@
 
 void print_object(HEAP_OBJECT *obj) {
 
+    if (!obj) {
+        printf("NIL");
+    }
+
     switch(obj->type) {
         case 0:
-            if (obj->null == 1) {
-                printf("NIL");
-            } else {
-                printf("%d", obj->value); 
-            }
+            printf("%d", obj->value); 
             break;
 
         case 1:
@@ -33,10 +33,10 @@ int main() {
     printf("nptr addr %p\n", nptr->address);
 
     print_object(nptr);
-    print_bitarray();
+    print_heap();
 
     garbage_collect();
-    print_bitarray();
+    print_heap();
 
     free(HEAP.memory_pool);
 
